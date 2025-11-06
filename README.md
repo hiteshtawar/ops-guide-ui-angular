@@ -1,27 +1,116 @@
-# OpsGuideUiAngular
+# OpsGuide UI - Angular Version
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 13.3.0.
+A clean, modern Angular 13.3 application for the OpsGuide operational intelligence platform. This is the Angular version converted from the React implementation.
 
-## Development server
+## 🚀 Quick Start
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+### Prerequisites
 
-## Code scaffolding
+- Node.js 14+ and npm
+- Angular CLI 13.3
+- OpsGuide backend running on `http://localhost:8093`
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+### Installation
 
-## Build
+```bash
+npm install
+```
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+### Development
 
-## Running unit tests
+```bash
+npm start
+# or
+ng serve
+```
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+The app will be available at `http://localhost:4200` (or the next available port).
 
-## Running end-to-end tests
+### Build
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+```bash
+npm run build
+# or
+ng build
+```
 
-## Further help
+### Production Build
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+```bash
+ng build --configuration production
+```
+
+## Features
+
+- 🎨 Clean, minimalist design inspired by Claude
+- ⏰ Time-based greetings (Good morning/afternoon/evening/night)
+- 📱 Fully responsive and adaptive to all screen sizes
+- ⚡ Real-time API integration with the OpsGuide backend using RxJS
+- 📋 Structured response display with classification results
+- 🔄 Reactive forms with Angular FormsModule
+- 📡 HTTP client using RxJS Observables (no signals)
+
+## Tech Stack
+
+- **Angular 13.3** with TypeScript
+- **RxJS** for HTTP calls and reactive programming
+- **Angular Reactive Forms** for form handling
+- **Angular HttpClient** for API communication
+- **CSS3** for styling (no external CSS frameworks)
+
+## Project Structure
+
+```
+src/
+  ├── app/
+  │   ├── models/
+  │   │   └── types.ts          # TypeScript interfaces
+  │   ├── services/
+  │   │   └── api.service.ts    # HTTP service using RxJS
+  │   ├── app.component.ts      # Main component
+  │   ├── app.component.html    # Template
+  │   ├── app.component.css     # Styles
+  │   └── app.module.ts         # Root module
+  ├── assets/                    # Static assets
+  └── environments/              # Environment configs
+```
+
+## API Configuration
+
+The API endpoint is configured in `src/app/services/api.service.ts`. By default, it connects to:
+- **Base URL**: `http://localhost:8093`
+- **Process Endpoint**: `/api/v1/process`
+- **Step Execution Endpoint**: `/v1/steps/execute`
+
+## Usage
+
+1. Start the OpsGuide backend server:
+   ```bash
+   cd /path/to/ops-guide-mvp
+   python server.py
+   ```
+
+2. Start this Angular UI:
+   ```bash
+   npm start
+   ```
+
+3. Open your browser and type a request like:
+   - `cancel case CASE-2024-TEST-001`
+   - `cancel order ORDER-2024-001`
+   - `change order status to completed`
+
+## Key Differences from React Version
+
+- Uses Angular Reactive Forms instead of React state
+- HTTP calls use RxJS Observables instead of async/await
+- Component lifecycle managed by Angular (OnInit, etc.)
+- Template syntax uses Angular directives (*ngIf, *ngFor, etc.)
+- Service-based architecture for API calls
+
+## Development Notes
+
+- All HTTP methods use RxJS Observables
+- No Angular signals (using RxJS for reactivity)
+- Form validation handled by Angular Reactive Forms
+- Error handling uses RxJS catchError operator
