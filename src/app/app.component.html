@@ -1,0 +1,151 @@
+<div class="app">
+  <div class="container">
+    <!-- Greeting -->
+    <div class="greeting">
+      <span class="greeting-icon">🌐</span>
+      <h1 class="greeting-text">{{ getGreeting() }}</h1>
+    </div>
+
+    <!-- Input Area -->
+    <form class="input-container" [formGroup]="queryForm" (ngSubmit)="onSubmit()">
+      <div class="input-box">
+        <textarea
+          #textareaRef
+          class="input-field"
+          formControlName="query"
+          placeholder="💬 How can I help you today?"
+          (keydown)="handleKeyDown($event)"
+          rows="1"
+          [disabled]="loading"
+        ></textarea>
+        
+        <div class="input-footer">
+          <div class="input-footer-left">
+            <label for="file-upload" class="attach-button" title="Attach JPEG or PDF">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+              </svg>
+              <input
+                id="file-upload"
+                type="file"
+                accept=".jpeg,.jpg,.pdf,image/jpeg,application/pdf"
+                (change)="handleFileChange($event)"
+                style="display: none"
+              />
+            </label>
+          </div>
+          
+          <div class="input-footer-right">
+            <button
+              type="submit"
+              class="send-button"
+              [disabled]="!queryForm.valid || loading"
+              aria-label="Send"
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 8L14 8M10 4L14 8L10 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="status-message loading">
+      <div class="spinner"></div>
+      <span>⚡ Processing your request...</span>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error" class="status-message error">
+      <span>⚠️ {{ error }}</span>
+    </div>
+
+    <!-- Response Display -->
+    <div *ngIf="response" class="response-container">
+      <div class="response-sections-horizontal">
+        <div class="response-section">
+          <h3>Classification</h3>
+          <div class="response-content">
+            <p><strong>Task ID:</strong> {{ response.taskId || 'N/A' }}</p>
+            <p><strong>Task Name:</strong> {{ response.taskName || 'N/A' }}</p>
+          </div>
+        </div>
+
+        <div *ngIf="response.extractedEntities && getObjectEntries(response.extractedEntities).length > 0" class="response-section">
+          <h3>Extracted Entities</h3>
+          <div class="response-content">
+            <p *ngFor="let entry of getObjectEntries(response.extractedEntities)">
+              <strong *ngIf="entry[1]">{{ entry[0] }}:</strong> <span *ngIf="entry[1]">{{ entry[1] }}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="response.warnings && response.warnings.length > 0" class="response-section">
+        <h3>Warnings</h3>
+        <div class="response-content">
+          <p *ngFor="let warning of response.warnings" style="color: #ff9800">⚠️ {{ warning }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="response.steps && response.steps.length > 0" class="response-section">
+        <h3>Steps</h3>
+        <div class="response-content">
+          <div class="steps-container">
+            <div *ngFor="let step of response.steps; let idx = index" class="step-wrapper">
+              <div class="step-row">
+                <div class="step-card" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, idx))?.status)">
+                  <div class="step-content">
+                    <div class="step-header">
+                      <span class="step-number">{{ step.stepNumber }}</span>
+                      <div class="step-info">
+                        <span class="step-name">{{ step.description }}</span>
+                        <span class="step-type-badge">{{ getStepTypeLabel(step.stepType) }}</span>
+                      </div>
+                      <span class="step-status" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, idx))?.status)">
+                        {{ getStepStatusIcon(getStepExecution(getStepId(response.taskId, idx))?.status) }}
+                      </span>
+                    </div>
+                    <div class="step-details-inline">
+                      <span class="step-method">{{ step.method }}</span>
+                      <span class="step-path">{{ step.path }}</span>
+                    </div>
+                  </div>
+                  <div class="step-actions">
+                    <button
+                      *ngIf="!getStepExecution(getStepId(response.taskId, idx)) && !isExecuting(getStepId(response.taskId, idx)) && step.autoExecutable"
+                      class="step-button auto-execute"
+                      (click)="executeStep(idx, step, response)"
+                    >
+                      Run
+                    </button>
+                    <button
+                      *ngIf="!getStepExecution(getStepId(response.taskId, idx)) && !isExecuting(getStepId(response.taskId, idx)) && !step.autoExecutable"
+                      class="step-button approve"
+                      (click)="executeStep(idx, step, response, true)"
+                    >
+                      Approve & Run
+                    </button>
+                    <span *ngIf="isExecuting(getStepId(response.taskId, idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
+                    <span *ngIf="getStepExecution(getStepId(response.taskId, idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
+                  </div>
+                </div>
+                <div *ngIf="getStepExecution(getStepId(response.taskId, idx))?.result || getStepExecution(getStepId(response.taskId, idx))?.errorMessage" class="step-message-container">
+                  <div *ngIf="getStepExecution(getStepId(response.taskId, idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, idx))?.result?.success ? 'success' : 'error'">
+                    {{ getStepExecution(getStepId(response.taskId, idx))?.result?.success ? '✓ ' : '✗ ' }}
+                    {{ getStepExecution(getStepId(response.taskId, idx))?.result?.message || getStepExecution(getStepId(response.taskId, idx))?.result?.data?.status || 'Completed' }}
+                  </div>
+                  <div *ngIf="getStepExecution(getStepId(response.taskId, idx))?.errorMessage" class="step-details error">
+                    ✗ {{ getStepExecution(getStepId(response.taskId, idx))?.errorMessage }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
