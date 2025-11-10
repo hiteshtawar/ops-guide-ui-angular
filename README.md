@@ -49,6 +49,10 @@ ng build --configuration production
 - 📋 Structured response display with classification results
 - 🔄 Reactive forms with Angular FormsModule
 - 📡 HTTP client using RxJS Observables (no signals)
+- 🎯 **NEW:** Task selector for manual task selection when classification fails
+- 📊 **NEW:** Step groups (Pre-checks, Procedure, Post-checks, Rollback)
+- ⚙️ **NEW:** Auto-execution of steps within groups
+- 🎨 **NEW:** Enhanced step display with inline HTTP method and path
 
 ## Tech Stack
 
@@ -80,7 +84,8 @@ src/
 The API endpoint is configured in `src/app/services/api.service.ts`. By default, it connects to:
 - **Base URL**: `http://localhost:8093`
 - **Process Endpoint**: `/api/v1/process`
-- **Step Execution Endpoint**: `/v1/steps/execute`
+- **Step Execution Endpoint**: `/api/v1/execute-step`
+- **Available Tasks Endpoint**: `/api/v1/tasks`
 
 ## Usage
 
@@ -99,6 +104,25 @@ The API endpoint is configured in `src/app/services/api.service.ts`. By default,
    - `cancel case CASE-2024-TEST-001`
    - `cancel order ORDER-2024-001`
    - `change order status to completed`
+   
+4. If the system cannot understand your request, a task selector will appear allowing you to manually choose the appropriate task.
+
+## Recent Updates (November 2025)
+
+This Angular version has been updated to match the latest React implementation with the following enhancements:
+
+### Step Groups Organization
+Steps are now organized into logical groups:
+- **Pre-checks**: Validation steps before main execution
+- **Procedure**: Main execution steps
+- **Post-checks**: Verification steps after execution
+- **Rollback**: Recovery steps if something goes wrong
+
+### Task Selector
+When the system cannot classify your request automatically, you'll see a task selector that lets you manually choose the appropriate task from available options.
+
+### Enhanced Step Display
+Steps now show their HTTP method and API path inline, giving you better visibility into what each step does.
 
 ## Key Differences from React Version
 
@@ -107,6 +131,7 @@ The API endpoint is configured in `src/app/services/api.service.ts`. By default,
 - Component lifecycle managed by Angular (OnInit, etc.)
 - Template syntax uses Angular directives (*ngIf, *ngFor, etc.)
 - Service-based architecture for API calls
+- Both versions now support step groups and task selector features
 
 ## Development Notes
 

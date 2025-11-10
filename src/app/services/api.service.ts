@@ -2,35 +2,26 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ClassificationResponse, ApiRequest, StepExecution, StepExecutionRequest } from '../models/types';
+import { ClassificationResponse, ApiRequest, StepExecution, StepExecutionRequest, AvailableTask } from '../models/types';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
   private readonly baseUrl = 'http://localhost:8093';
-  private readonly authToken = 'Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJvcHMtZW5naW5lZXItdGVzdCIsIm5hbWUiOiJUZXN0IE9wZXJhdG9yIiwiaWF0IjoxNjk5OTk5OTk5LCJleHAiOjE3MDA5OTk5OTksInJvbGVzIjpbIm9wc19lbmdpbmVlciJdfQ.SAMPLE_JWT_TOKEN';
-  private readonly userId = 'ops-engineer-test';
+  private readonly authToken = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlbmdpbmVlckBleGFtcGxlLmNvbSIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIiwicm9sZXMiOlsicHJvZHVjdGlvbl9zdXBwb3J0Iiwic3VwcG9ydF9hZG1pbiJdLCJpYXQiOjE3NjI0NjYzNTksImV4cCI6MjA3NzgyNjM1OX0.v8amYkiJOS2dT9MQaZJBkdN-8rWrs-rfxqgVCtgTu3Q';
 
   constructor(private http: HttpClient) {}
 
-  private getHeaders(idempotencyKey?: string): HttpHeaders {
-    let headers = new HttpHeaders({
+  private getHeaders(): HttpHeaders {
+    return new HttpHeaders({
       'Content-Type': 'application/json',
-      'X-User-ID': this.userId,
       'Authorization': this.authToken
     });
-
-    if (idempotencyKey) {
-      headers = headers.set('X-Idempotency-Key', idempotencyKey);
-    }
-
-    return headers;
   }
 
   processRequest(request: ApiRequest): Observable<ClassificationResponse> {
-    const idempotencyKey = this.generateIdempotencyKey();
-    const headers = this.getHeaders(idempotencyKey);
+    const headers = this.getHeaders();
 
     return this.http.post<ClassificationResponse>(
       `${this.baseUrl}/api/v1/process`,
@@ -41,20 +32,30 @@ export class ApiService {
     );
   }
 
-  executeStep(request: StepExecutionRequest): Observable<StepExecution> {
+  getAvailableTasks(): Observable<AvailableTask[]> {
     const headers = this.getHeaders();
 
-    return this.http.post<StepExecution>(
-      `${this.baseUrl}/v1/steps/execute`,
+    return this.http.get<AvailableTask[]>(
+      `${this.baseUrl}/api/v1/tasks`,
+      { headers }
+    ).pipe(
+      catchError(() => {
+        console.error('Failed to fetch available tasks');
+        return throwError(() => new Error('Failed to fetch available tasks'));
+      })
+    );
+  }
+
+  executeStep(request: StepExecutionRequest): Observable<any> {
+    const headers = this.getHeaders();
+
+    return this.http.post<any>(
+      `${this.baseUrl}/api/v1/execute-step`,
       request,
       { headers }
     ).pipe(
       catchError(this.handleError)
     );
-  }
-
-  private generateIdempotencyKey(): string {
-    return crypto.randomUUID();
   }
 
   private handleError(error: HttpErrorResponse): Observable<never> {

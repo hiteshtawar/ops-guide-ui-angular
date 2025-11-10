@@ -9,6 +9,13 @@ export interface Step {
   stepType: string;
 }
 
+export interface StepGroups {
+  prechecks?: Step[];
+  procedure?: Step[];
+  postchecks?: Step[];
+  rollback?: Step[];
+}
+
 export interface ClassificationResponse {
   taskId: string;
   taskName: string;
@@ -20,21 +27,20 @@ export interface ClassificationResponse {
     service?: string;
     target_status?: string;
   };
-  steps: Step[];
+  steps: StepGroups;
   warnings?: string[];
 }
 
 export interface ApiRequest {
-  user_id: string;
   query: string;
-  context: {
-    reason: string;
-    priority: string;
-    requested_by: string;
-    timestamp: string;
-    [key: string]: unknown;
-  };
-  environment: string;
+  userId: string;
+  taskId?: string;  // Optional: override classification
+}
+
+export interface AvailableTask {
+  taskId: string;
+  taskName: string;
+  description: string;
 }
 
 export interface StepExecution {
@@ -56,14 +62,10 @@ export interface StepExecution {
 }
 
 export interface StepExecutionRequest {
-  requestId: string;
-  stepIndex: string;
-  stepName: string;
   taskId: string;
-  extractedEntities?: Record<string, string | null>;
-  skipApproval?: boolean;
-  apiEndpoint?: string | null;
-  httpMethod?: string | null;
-  apiParameters?: Record<string, unknown> | null;
+  stepNumber: number;
+  entities: Record<string, string | null>;
+  userId: string;
+  authToken: string;
 }
 

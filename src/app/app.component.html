@@ -62,6 +62,33 @@
       <span>⚠️ {{ error }}</span>
     </div>
 
+    <!-- Task Selector (when classification is UNKNOWN) -->
+    <div *ngIf="showTaskSelector && availableTasks.length > 0" class="task-selector-container">
+      <div class="task-selector">
+        <h3>⚠️ I couldn't understand that. What would you like to do?</h3>
+        <p class="original-query">Query: "{{ originalQuery }}"</p>
+        <div class="task-options">
+          <div 
+            *ngFor="let task of availableTasks" 
+            class="task-option"
+            (click)="handleTaskSelection(task.taskId)"
+          >
+            <div class="task-option-header">
+              <span class="task-option-icon">○</span>
+              <span class="task-option-name">{{ task.taskName }}</span>
+            </div>
+            <div class="task-option-description">{{ task.description }}</div>
+          </div>
+        </div>
+        <button 
+          class="task-selector-dismiss"
+          (click)="showTaskSelector = false"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+
     <!-- Response Display -->
     <div *ngIf="response" class="response-container">
       <div class="response-sections-horizontal">
@@ -90,55 +117,215 @@
         </div>
       </div>
 
-      <div *ngIf="response.steps && response.steps.length > 0" class="response-section">
-        <h3>Steps</h3>
+      <div *ngIf="response.steps" class="response-section">
+        <h3>Runbook Steps</h3>
         <div class="response-content">
-          <div class="steps-container">
-            <div *ngFor="let step of response.steps; let idx = index" class="step-wrapper">
-              <div class="step-row">
-                <div class="step-card" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, idx))?.status)">
-                  <div class="step-content">
-                    <div class="step-header">
-                      <span class="step-number">{{ step.stepNumber }}</span>
-                      <div class="step-info">
-                        <span class="step-name">{{ step.description }}</span>
-                        <span class="step-type-badge">{{ getStepTypeLabel(step.stepType) }}</span>
+          <!-- Prechecks -->
+          <div *ngIf="response.steps.prechecks && response.steps.prechecks.length > 0" class="step-group">
+            <h4 class="step-group-header">Pre-checks</h4>
+            <div class="steps-container">
+              <div *ngFor="let step of response.steps.prechecks; let idx = index" class="step-wrapper">
+                <div class="step-row">
+                  <div class="step-card" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.status)">
+                    <div class="step-content">
+                      <div class="step-header">
+                        <span class="step-number">{{ step.stepNumber }}</span>
+                        <div class="step-info">
+                          <span class="step-name-with-api" [title]="step.description + ' ' + step.method + ' ' + step.path">
+                            {{ step.description }} <span class="step-method">{{ step.method }}</span> <span class="step-path">{{ step.path }}</span>
+                          </span>
+                        </div>
+                        <span class="step-status" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.status)">
+                          {{ getStepStatusIcon(getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.status) }}
+                        </span>
                       </div>
-                      <span class="step-status" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, idx))?.status)">
-                        {{ getStepStatusIcon(getStepExecution(getStepId(response.taskId, idx))?.status) }}
-                      </span>
                     </div>
-                    <div class="step-details-inline">
-                      <span class="step-method">{{ step.method }}</span>
-                      <span class="step-path">{{ step.path }}</span>
+                    <div class="step-actions">
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'prechecks', idx)) && !isExecuting(getStepId(response.taskId, 'prechecks', idx)) && step.autoExecutable"
+                        class="step-button auto-execute"
+                        (click)="executeStep(idx, step, response, 'prechecks')"
+                      >
+                        Run
+                      </button>
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'prechecks', idx)) && !isExecuting(getStepId(response.taskId, 'prechecks', idx)) && !step.autoExecutable"
+                        class="step-button approve"
+                        (click)="executeStep(idx, step, response, 'prechecks', true)"
+                      >
+                        Approve & Run
+                      </button>
+                      <span *ngIf="isExecuting(getStepId(response.taskId, 'prechecks', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
+                      <span *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
                     </div>
                   </div>
-                  <div class="step-actions">
-                    <button
-                      *ngIf="!getStepExecution(getStepId(response.taskId, idx)) && !isExecuting(getStepId(response.taskId, idx)) && step.autoExecutable"
-                      class="step-button auto-execute"
-                      (click)="executeStep(idx, step, response)"
-                    >
-                      Run
-                    </button>
-                    <button
-                      *ngIf="!getStepExecution(getStepId(response.taskId, idx)) && !isExecuting(getStepId(response.taskId, idx)) && !step.autoExecutable"
-                      class="step-button approve"
-                      (click)="executeStep(idx, step, response, true)"
-                    >
-                      Approve & Run
-                    </button>
-                    <span *ngIf="isExecuting(getStepId(response.taskId, idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
-                    <span *ngIf="getStepExecution(getStepId(response.taskId, idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
+                  <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result || getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage" class="step-message-container">
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.success ? 'success' : 'error'">
+                      {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.success ? '✓ ' : '✗ ' }}
+                      {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.data?.status || 'Completed' }}
+                    </div>
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage" class="step-details error">
+                      ✗ {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage }}
+                    </div>
                   </div>
                 </div>
-                <div *ngIf="getStepExecution(getStepId(response.taskId, idx))?.result || getStepExecution(getStepId(response.taskId, idx))?.errorMessage" class="step-message-container">
-                  <div *ngIf="getStepExecution(getStepId(response.taskId, idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, idx))?.result?.success ? 'success' : 'error'">
-                    {{ getStepExecution(getStepId(response.taskId, idx))?.result?.success ? '✓ ' : '✗ ' }}
-                    {{ getStepExecution(getStepId(response.taskId, idx))?.result?.message || getStepExecution(getStepId(response.taskId, idx))?.result?.data?.status || 'Completed' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Procedure -->
+          <div *ngIf="response.steps.procedure && response.steps.procedure.length > 0" class="step-group">
+            <h4 class="step-group-header">Procedure</h4>
+            <div class="steps-container">
+              <div *ngFor="let step of response.steps.procedure; let idx = index" class="step-wrapper">
+                <div class="step-row">
+                  <div class="step-card" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'procedure', idx))?.status)">
+                    <div class="step-content">
+                      <div class="step-header">
+                        <span class="step-number">{{ step.stepNumber }}</span>
+                        <div class="step-info">
+                          <span class="step-name-with-api" [title]="step.description + ' ' + step.method + ' ' + step.path">
+                            {{ step.description }} <span class="step-method">{{ step.method }}</span> <span class="step-path">{{ step.path }}</span>
+                          </span>
+                        </div>
+                        <span class="step-status" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'procedure', idx))?.status)">
+                          {{ getStepStatusIcon(getStepExecution(getStepId(response.taskId, 'procedure', idx))?.status) }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="step-actions">
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'procedure', idx)) && !isExecuting(getStepId(response.taskId, 'procedure', idx)) && step.autoExecutable"
+                        class="step-button auto-execute"
+                        (click)="executeStep(idx, step, response, 'procedure')"
+                      >
+                        Run
+                      </button>
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'procedure', idx)) && !isExecuting(getStepId(response.taskId, 'procedure', idx)) && !step.autoExecutable"
+                        class="step-button approve"
+                        (click)="executeStep(idx, step, response, 'procedure', true)"
+                      >
+                        Approve & Run
+                      </button>
+                      <span *ngIf="isExecuting(getStepId(response.taskId, 'procedure', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
+                      <span *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
+                    </div>
                   </div>
-                  <div *ngIf="getStepExecution(getStepId(response.taskId, idx))?.errorMessage" class="step-details error">
-                    ✗ {{ getStepExecution(getStepId(response.taskId, idx))?.errorMessage }}
+                  <div *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result || getStepExecution(getStepId(response.taskId, 'procedure', idx))?.errorMessage" class="step-message-container">
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.success ? 'success' : 'error'">
+                      {{ getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.success ? '✓ ' : '✗ ' }}
+                      {{ getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.data?.status || 'Completed' }}
+                    </div>
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.errorMessage" class="step-details error">
+                      ✗ {{ getStepExecution(getStepId(response.taskId, 'procedure', idx))?.errorMessage }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Postchecks -->
+          <div *ngIf="response.steps.postchecks && response.steps.postchecks.length > 0" class="step-group">
+            <h4 class="step-group-header">Post-checks</h4>
+            <div class="steps-container">
+              <div *ngFor="let step of response.steps.postchecks; let idx = index" class="step-wrapper">
+                <div class="step-row">
+                  <div class="step-card" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.status)">
+                    <div class="step-content">
+                      <div class="step-header">
+                        <span class="step-number">{{ step.stepNumber }}</span>
+                        <div class="step-info">
+                          <span class="step-name-with-api" [title]="step.description + ' ' + step.method + ' ' + step.path">
+                            {{ step.description }} <span class="step-method">{{ step.method }}</span> <span class="step-path">{{ step.path }}</span>
+                          </span>
+                        </div>
+                        <span class="step-status" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.status)">
+                          {{ getStepStatusIcon(getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.status) }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="step-actions">
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'postchecks', idx)) && !isExecuting(getStepId(response.taskId, 'postchecks', idx)) && step.autoExecutable"
+                        class="step-button auto-execute"
+                        (click)="executeStep(idx, step, response, 'postchecks')"
+                      >
+                        Run
+                      </button>
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'postchecks', idx)) && !isExecuting(getStepId(response.taskId, 'postchecks', idx)) && !step.autoExecutable"
+                        class="step-button approve"
+                        (click)="executeStep(idx, step, response, 'postchecks', true)"
+                      >
+                        Approve & Run
+                      </button>
+                      <span *ngIf="isExecuting(getStepId(response.taskId, 'postchecks', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
+                      <span *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
+                    </div>
+                  </div>
+                  <div *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result || getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.errorMessage" class="step-message-container">
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.success ? 'success' : 'error'">
+                      {{ getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.success ? '✓ ' : '✗ ' }}
+                      {{ getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.data?.status || 'Completed' }}
+                    </div>
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.errorMessage" class="step-details error">
+                      ✗ {{ getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.errorMessage }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rollback -->
+          <div *ngIf="response.steps.rollback && response.steps.rollback.length > 0" class="step-group">
+            <h4 class="step-group-header">Rollback</h4>
+            <div class="steps-container">
+              <div *ngFor="let step of response.steps.rollback; let idx = index" class="step-wrapper">
+                <div class="step-row">
+                  <div class="step-card" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'rollback', idx))?.status)">
+                    <div class="step-content">
+                      <div class="step-header">
+                        <span class="step-number">{{ step.stepNumber }}</span>
+                        <div class="step-info">
+                          <span class="step-name-with-api" [title]="step.description + ' ' + step.method + ' ' + step.path">
+                            {{ step.description }} <span class="step-method">{{ step.method }}</span> <span class="step-path">{{ step.path }}</span>
+                          </span>
+                        </div>
+                        <span class="step-status" [ngClass]="getStepStatusClass(getStepExecution(getStepId(response.taskId, 'rollback', idx))?.status)">
+                          {{ getStepStatusIcon(getStepExecution(getStepId(response.taskId, 'rollback', idx))?.status) }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="step-actions">
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'rollback', idx)) && !isExecuting(getStepId(response.taskId, 'rollback', idx)) && step.autoExecutable"
+                        class="step-button auto-execute"
+                        (click)="executeStep(idx, step, response, 'rollback')"
+                      >
+                        Run
+                      </button>
+                      <button
+                        *ngIf="!getStepExecution(getStepId(response.taskId, 'rollback', idx)) && !isExecuting(getStepId(response.taskId, 'rollback', idx)) && !step.autoExecutable"
+                        class="step-button approve"
+                        (click)="executeStep(idx, step, response, 'rollback', true)"
+                      >
+                        Approve & Run
+                      </button>
+                      <span *ngIf="isExecuting(getStepId(response.taskId, 'rollback', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
+                      <span *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
+                    </div>
+                  </div>
+                  <div *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result || getStepExecution(getStepId(response.taskId, 'rollback', idx))?.errorMessage" class="step-message-container">
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.success ? 'success' : 'error'">
+                      {{ getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.success ? '✓ ' : '✗ ' }}
+                      {{ getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.data?.status || 'Completed' }}
+                    </div>
+                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.errorMessage" class="step-details error">
+                      ✗ {{ getStepExecution(getStepId(response.taskId, 'rollback', idx))?.errorMessage }}
+                    </div>
                   </div>
                 </div>
               </div>

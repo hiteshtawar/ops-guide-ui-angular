@@ -1,7 +1,7 @@
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ApiService } from './services/api.service';
-import { ClassificationResponse, Step, StepExecution, ApiRequest, StepExecutionRequest } from './models/types';
+import { ClassificationResponse, Step, StepExecution, ApiRequest, StepExecutionRequest, AvailableTask, StepGroups } from './models/types';
 import { Observable, timer } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
@@ -19,6 +19,9 @@ export class AppComponent implements OnInit {
   error: string | null = null;
   steps = new Map<string, StepExecution>();
   executingSteps = new Set<string>();
+  availableTasks: AvailableTask[] = [];
+  showTaskSelector = false;
+  originalQuery = '';
 
   constructor(
     private fb: FormBuilder,
@@ -33,6 +36,20 @@ export class AppComponent implements OnInit {
     // Auto-resize textarea when query changes
     this.queryForm.get('query')?.valueChanges.subscribe(() => {
       this.autoResizeTextarea();
+    });
+    
+    // Fetch available tasks on mount
+    this.fetchAvailableTasks();
+  }
+  
+  fetchAvailableTasks(): void {
+    this.apiService.getAvailableTasks().subscribe({
+      next: (tasks) => {
+        this.availableTasks = tasks;
+      },
+      error: (err) => {
+        console.error('Failed to fetch available tasks:', err);
+      }
     });
   }
 
@@ -102,15 +119,58 @@ export class AppComponent implements OnInit {
     this.response = null;
 
     const requestBody: ApiRequest = {
-      user_id: 'ops-engineer-test',
       query: query,
-      context: {
-        reason: 'UI request',
-        priority: 'normal',
-        requested_by: 'ops-engineer-test',
-        timestamp: new Date().toISOString()
-      },
-      environment: 'prod'
+      userId: 'ops-engineer-test'
+    };
+
+    this.apiService.processRequest(requestBody)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+        })
+      )
+      .subscribe({
+        next: (data: ClassificationResponse) => {
+          // Check if classification failed
+          if (!data.taskId || data.taskId === 'UNKNOWN') {
+            this.originalQuery = query;
+            this.showTaskSelector = true;
+            this.response = null;
+            this.queryForm.patchValue({ query: '' });
+            return;
+          }
+          
+          this.response = data;
+          this.queryForm.patchValue({ query: '' });
+          this.showTaskSelector = false;
+          
+          // Auto-execute the first auto-executable step from prechecks
+          if (data.steps && data.steps.prechecks && data.steps.prechecks.length > 0) {
+            const firstAutoStep = data.steps.prechecks.find(step => step.autoExecutable);
+            if (firstAutoStep) {
+              const stepIndex = data.steps.prechecks.indexOf(firstAutoStep);
+              timer(500).subscribe(() => {
+                this.executeStep(stepIndex, firstAutoStep, data, 'prechecks');
+              });
+            }
+          }
+        },
+        error: (err: Error) => {
+          this.error = err.message || 'An unknown error occurred';
+          console.error('Error:', err);
+        }
+      });
+  }
+  
+  handleTaskSelection(taskId: string): void {
+    this.loading = true;
+    this.error = null;
+    this.showTaskSelector = false;
+
+    const requestBody: ApiRequest = {
+      query: this.originalQuery,
+      userId: 'ops-engineer-test',
+      taskId: taskId
     };
 
     this.apiService.processRequest(requestBody)
@@ -122,22 +182,14 @@ export class AppComponent implements OnInit {
       .subscribe({
         next: (data: ClassificationResponse) => {
           this.response = data;
-          this.queryForm.patchValue({ query: '' });
           
-          // Auto-execute only the first auto-executable step
-          if (data.steps && data.steps.length > 0) {
-            const firstAutoStep = data.steps.find((step, idx) => {
-              if (step.autoExecutable) {
-                const hasNonAutoBefore = data.steps.slice(0, idx).some(s => !s.autoExecutable);
-                return !hasNonAutoBefore;
-              }
-              return false;
-            });
-            
+          // Auto-execute first auto-executable step in prechecks
+          if (data.steps?.prechecks && data.steps.prechecks.length > 0) {
+            const firstAutoStep = data.steps.prechecks.find(step => step.autoExecutable);
             if (firstAutoStep) {
-              const stepIndex = data.steps.indexOf(firstAutoStep);
+              const stepIndex = data.steps.prechecks.indexOf(firstAutoStep);
               timer(500).subscribe(() => {
-                this.executeStep(stepIndex, firstAutoStep, data);
+                this.executeStep(stepIndex, firstAutoStep, data, 'prechecks');
               });
             }
           }
@@ -149,20 +201,16 @@ export class AppComponent implements OnInit {
       });
   }
 
-  executeStep(stepIndex: number, step: Step, response: ClassificationResponse, skipApproval = false): void {
-    const stepId = `${response.taskId}-step-${stepIndex}`;
+  executeStep(stepIndex: number, step: Step, response: ClassificationResponse, stepGroup: string, skipApproval = false): void {
+    const stepId = `${response.taskId}-${stepGroup}-${stepIndex}`;
     this.executingSteps.add(stepId);
     
     const stepRequest: StepExecutionRequest = {
-      requestId: response.taskId,
-      stepIndex: String(stepIndex),
-      stepName: step.description,
       taskId: response.taskId,
-      extractedEntities: response.extractedEntities,
-      skipApproval: skipApproval,
-      apiEndpoint: step.path || undefined,
-      httpMethod: step.method || undefined,
-      apiParameters: undefined
+      stepNumber: step.stepNumber,
+      entities: response.extractedEntities,
+      userId: 'ops-engineer-test',
+      authToken: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlbmdpbmVlckBleGFtcGxlLmNvbSIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIiwicm9sZXMiOlsicHJvZHVjdGlvbl9zdXBwb3J0Iiwic3VwcG9ydF9hZG1pbiJdLCJpYXQiOjE3NjI0NjYzNTksImV4cCI6MjA3NzgyNjM1OX0.v8amYkiJOS2dT9MQaZJBkdN-8rWrs-rfxqgVCtgTu3Q'
     };
 
     this.apiService.executeStep(stepRequest)
@@ -172,19 +220,39 @@ export class AppComponent implements OnInit {
         })
       )
       .subscribe({
-        next: (stepExecution: StepExecution) => {
+        next: (stepResponse: any) => {
+          // Update step status - map backend response to UI format
+          const stepExecution: StepExecution = {
+            stepId: stepId,
+            requestId: response.taskId,
+            stepName: step.description,
+            status: stepResponse.success ? 'COMPLETED' : 'FAILED',
+            type: 'API_EXECUTION',
+            requiresApproval: false,
+            result: stepResponse.success ? {
+              success: true,
+              message: stepResponse.responseBody || 'Step completed',
+              data: { statusCode: stepResponse.statusCode },
+              statusCode: stepResponse.statusCode
+            } : undefined,
+            errorMessage: stepResponse.errorMessage
+          };
+          
           this.steps.set(stepId, stepExecution);
           
-          // If this step completed successfully, check if we should auto-execute the next step
-          if (stepExecution.status === 'COMPLETED' && stepExecution.result?.success) {
-            const nextStepIndex = stepIndex + 1;
-            const nextStep = response.steps?.[nextStepIndex];
-            
-            // Only auto-execute next step if it's auto-executable
-            if (nextStep && nextStep.autoExecutable) {
-              timer(500).subscribe(() => {
-                this.executeStep(nextStepIndex, nextStep, response);
-              });
+          // If this step completed successfully, check if we should auto-execute the next step in same group
+          if (stepResponse.success) {
+            const currentGroup = response.steps?.[stepGroup as keyof StepGroups];
+            if (currentGroup) {
+              const nextStepIndex = stepIndex + 1;
+              const nextStep = currentGroup[nextStepIndex];
+              
+              // Only auto-execute next step if it exists and is auto-executable
+              if (nextStep && nextStep.autoExecutable) {
+                timer(500).subscribe(() => {
+                  this.executeStep(nextStepIndex, nextStep, response, stepGroup);
+                });
+              }
             }
           }
         },
@@ -206,8 +274,12 @@ export class AppComponent implements OnInit {
       });
   }
 
-  getStepId(taskId: string, index: number): string {
-    return `${taskId}-step-${index}`;
+  getStepId(taskId: string, stepGroup: string, index: number): string {
+    return `${taskId}-${stepGroup}-${index}`;
+  }
+  
+  renderStepGroup(stepList: Step[], response: ClassificationResponse, stepGroup: string): Step[] {
+    return stepList;
   }
 
   getStepExecution(stepId: string): StepExecution | undefined {
