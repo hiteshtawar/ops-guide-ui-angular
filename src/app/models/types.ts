@@ -67,5 +67,6 @@ export interface StepExecutionRequest {
   entities: Record<string, string | null>;
   userId: string;
   authToken: string;
+  roleName?: string;
 }
 

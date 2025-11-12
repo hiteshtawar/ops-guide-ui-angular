@@ -141,33 +141,54 @@
                       </div>
                     </div>
                     <div class="step-actions">
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'prechecks', idx)) && !isExecuting(getStepId(response.taskId, 'prechecks', idx)) && step.autoExecutable"
-                        class="step-button auto-execute"
-                        (click)="executeStep(idx, step, response, 'prechecks')"
-                      >
-                        Run
-                      </button>
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'prechecks', idx)) && !isExecuting(getStepId(response.taskId, 'prechecks', idx)) && !step.autoExecutable"
-                        class="step-button approve"
-                        (click)="executeStep(idx, step, response, 'prechecks', true)"
-                      >
-                        Approve & Run
-                      </button>
+                      <ng-container *ngIf="!getStepExecution(getStepId(response.taskId, 'prechecks', idx)) && !isExecuting(getStepId(response.taskId, 'prechecks', idx))">
+                        <ng-container *ngIf="hasPreviousStepFailed(idx, 'prechecks', response)">
+                          <span class="blocked-message" style="font-size: 0.85rem; color: #ff9800">⏸ Blocked by previous failure</span>
+                        </ng-container>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'prechecks', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          (click)="executeStep(idx, step, response, 'prechecks')"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'prechecks', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          (click)="executeStep(idx, step, response, 'prechecks', true)"
+                        >
+                          Approve & Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'prechecks', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'prechecks', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Approve & Run
+                        </button>
+                      </ng-container>
                       <span *ngIf="isExecuting(getStepId(response.taskId, 'prechecks', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
                       <span *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
                     </div>
                   </div>
                   <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result || getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage" class="step-message-container">
-                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.success ? 'success' : 'error'">
-                      {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.success ? '✓ ' : '✗ ' }}
-                      {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.data?.status || 'Completed' }}
+                      <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.success ? 'success' : 'error'">
+                        {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.success ? '✓ ' : '✗ ' }}
+                        {{ parseMessage(getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.message) || getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.result?.data?.status || 'Completed' }}
+                      </div>
+                      <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage" class="step-details error">
+                        ✗ {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage }}
+                      </div>
                     </div>
-                    <div *ngIf="getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage" class="step-details error">
-                      ✗ {{ getStepExecution(getStepId(response.taskId, 'prechecks', idx))?.errorMessage }}
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -194,20 +215,41 @@
                       </div>
                     </div>
                     <div class="step-actions">
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'procedure', idx)) && !isExecuting(getStepId(response.taskId, 'procedure', idx)) && step.autoExecutable"
-                        class="step-button auto-execute"
-                        (click)="executeStep(idx, step, response, 'procedure')"
-                      >
-                        Run
-                      </button>
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'procedure', idx)) && !isExecuting(getStepId(response.taskId, 'procedure', idx)) && !step.autoExecutable"
-                        class="step-button approve"
-                        (click)="executeStep(idx, step, response, 'procedure', true)"
-                      >
-                        Approve & Run
-                      </button>
+                      <ng-container *ngIf="!getStepExecution(getStepId(response.taskId, 'procedure', idx)) && !isExecuting(getStepId(response.taskId, 'procedure', idx))">
+                        <ng-container *ngIf="hasPreviousStepFailed(idx, 'procedure', response)">
+                          <span class="blocked-message" style="font-size: 0.85rem; color: #ff9800">⏸ Blocked by previous failure</span>
+                        </ng-container>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'procedure', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          (click)="executeStep(idx, step, response, 'procedure')"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'procedure', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          (click)="executeStep(idx, step, response, 'procedure', true)"
+                        >
+                          Approve & Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'procedure', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'procedure', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Approve & Run
+                        </button>
+                      </ng-container>
                       <span *ngIf="isExecuting(getStepId(response.taskId, 'procedure', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
                       <span *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
                     </div>
@@ -215,7 +257,7 @@
                   <div *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result || getStepExecution(getStepId(response.taskId, 'procedure', idx))?.errorMessage" class="step-message-container">
                     <div *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.success ? 'success' : 'error'">
                       {{ getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.success ? '✓ ' : '✗ ' }}
-                      {{ getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.data?.status || 'Completed' }}
+                      {{ parseMessage(getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.message) || getStepExecution(getStepId(response.taskId, 'procedure', idx))?.result?.data?.status || 'Completed' }}
                     </div>
                     <div *ngIf="getStepExecution(getStepId(response.taskId, 'procedure', idx))?.errorMessage" class="step-details error">
                       ✗ {{ getStepExecution(getStepId(response.taskId, 'procedure', idx))?.errorMessage }}
@@ -247,20 +289,41 @@
                       </div>
                     </div>
                     <div class="step-actions">
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'postchecks', idx)) && !isExecuting(getStepId(response.taskId, 'postchecks', idx)) && step.autoExecutable"
-                        class="step-button auto-execute"
-                        (click)="executeStep(idx, step, response, 'postchecks')"
-                      >
-                        Run
-                      </button>
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'postchecks', idx)) && !isExecuting(getStepId(response.taskId, 'postchecks', idx)) && !step.autoExecutable"
-                        class="step-button approve"
-                        (click)="executeStep(idx, step, response, 'postchecks', true)"
-                      >
-                        Approve & Run
-                      </button>
+                      <ng-container *ngIf="!getStepExecution(getStepId(response.taskId, 'postchecks', idx)) && !isExecuting(getStepId(response.taskId, 'postchecks', idx))">
+                        <ng-container *ngIf="hasPreviousStepFailed(idx, 'postchecks', response)">
+                          <span class="blocked-message" style="font-size: 0.85rem; color: #ff9800">⏸ Blocked by previous failure</span>
+                        </ng-container>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'postchecks', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          (click)="executeStep(idx, step, response, 'postchecks')"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'postchecks', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          (click)="executeStep(idx, step, response, 'postchecks', true)"
+                        >
+                          Approve & Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'postchecks', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'postchecks', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Approve & Run
+                        </button>
+                      </ng-container>
                       <span *ngIf="isExecuting(getStepId(response.taskId, 'postchecks', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
                       <span *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
                     </div>
@@ -268,7 +331,7 @@
                   <div *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result || getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.errorMessage" class="step-message-container">
                     <div *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.success ? 'success' : 'error'">
                       {{ getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.success ? '✓ ' : '✗ ' }}
-                      {{ getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.data?.status || 'Completed' }}
+                      {{ parseMessage(getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.message) || getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.result?.data?.status || 'Completed' }}
                     </div>
                     <div *ngIf="getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.errorMessage" class="step-details error">
                       ✗ {{ getStepExecution(getStepId(response.taskId, 'postchecks', idx))?.errorMessage }}
@@ -300,20 +363,41 @@
                       </div>
                     </div>
                     <div class="step-actions">
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'rollback', idx)) && !isExecuting(getStepId(response.taskId, 'rollback', idx)) && step.autoExecutable"
-                        class="step-button auto-execute"
-                        (click)="executeStep(idx, step, response, 'rollback')"
-                      >
-                        Run
-                      </button>
-                      <button
-                        *ngIf="!getStepExecution(getStepId(response.taskId, 'rollback', idx)) && !isExecuting(getStepId(response.taskId, 'rollback', idx)) && !step.autoExecutable"
-                        class="step-button approve"
-                        (click)="executeStep(idx, step, response, 'rollback', true)"
-                      >
-                        Approve & Run
-                      </button>
+                      <ng-container *ngIf="!getStepExecution(getStepId(response.taskId, 'rollback', idx)) && !isExecuting(getStepId(response.taskId, 'rollback', idx))">
+                        <ng-container *ngIf="hasPreviousStepFailed(idx, 'rollback', response)">
+                          <span class="blocked-message" style="font-size: 0.85rem; color: #ff9800">⏸ Blocked by previous failure</span>
+                        </ng-container>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'rollback', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          (click)="executeStep(idx, step, response, 'rollback')"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="!hasPreviousStepFailed(idx, 'rollback', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          (click)="executeStep(idx, step, response, 'rollback', true)"
+                        >
+                          Approve & Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'rollback', response) && step.autoExecutable"
+                          class="step-button auto-execute"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Run
+                        </button>
+                        <button
+                          *ngIf="hasPreviousStepFailed(idx, 'rollback', response) && !step.autoExecutable"
+                          class="step-button approve"
+                          [disabled]="true"
+                          style="opacity: 0.5; cursor: not-allowed;"
+                        >
+                          Approve & Run
+                        </button>
+                      </ng-container>
                       <span *ngIf="isExecuting(getStepId(response.taskId, 'rollback', idx))" class="executing" style="font-size: 0.85rem">⟳ Running...</span>
                       <span *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.status === 'CANCELLED'" style="font-size: 0.85rem; color: #90a4ae">✗ Cancelled</span>
                     </div>
@@ -321,7 +405,7 @@
                   <div *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result || getStepExecution(getStepId(response.taskId, 'rollback', idx))?.errorMessage" class="step-message-container">
                     <div *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result" class="step-details" [ngClass]="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.success ? 'success' : 'error'">
                       {{ getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.success ? '✓ ' : '✗ ' }}
-                      {{ getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.message || getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.data?.status || 'Completed' }}
+                      {{ parseMessage(getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.message) || getStepExecution(getStepId(response.taskId, 'rollback', idx))?.result?.data?.status || 'Completed' }}
                     </div>
                     <div *ngIf="getStepExecution(getStepId(response.taskId, 'rollback', idx))?.errorMessage" class="step-details error">
                       ✗ {{ getStepExecution(getStepId(response.taskId, 'rollback', idx))?.errorMessage }}

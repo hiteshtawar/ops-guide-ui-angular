@@ -205,12 +205,16 @@ export class AppComponent implements OnInit {
     const stepId = `${response.taskId}-${stepGroup}-${stepIndex}`;
     this.executingSteps.add(stepId);
     
+    const jwtToken = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlbmdpbmVlckBleGFtcGxlLmNvbSIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIiwicm9sZXMiOlsicHJvZHVjdGlvbl9zdXBwb3J0Iiwic3VwcG9ydF9hZG1pbiJdLCJpYXQiOjE3NjI0NjYzNTksImV4cCI6MjA3NzgyNjM1OX0.v8amYkiJOS2dT9MQaZJBkdN-8rWrs-rfxqgVCtgTu3Q';
+    const roleName = this.extractRoleFromJWT(jwtToken);
+    
     const stepRequest: StepExecutionRequest = {
       taskId: response.taskId,
       stepNumber: step.stepNumber,
       entities: response.extractedEntities,
       userId: 'ops-engineer-test',
-      authToken: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJlbmdpbmVlckBleGFtcGxlLmNvbSIsIm5hbWUiOiJUZXN0IEVuZ2luZWVyIiwicm9sZXMiOlsicHJvZHVjdGlvbl9zdXBwb3J0Iiwic3VwcG9ydF9hZG1pbiJdLCJpYXQiOjE3NjI0NjYzNTksImV4cCI6MjA3NzgyNjM1OX0.v8amYkiJOS2dT9MQaZJBkdN-8rWrs-rfxqgVCtgTu3Q'
+      authToken: jwtToken,
+      roleName: roleName
     };
 
     this.apiService.executeStep(stepRequest)
@@ -221,6 +225,12 @@ export class AppComponent implements OnInit {
       )
       .subscribe({
         next: (stepResponse: any) => {
+          // Parse response body to extract message if it's JSON
+          let message = stepResponse.responseBody || 'Step completed';
+          if (stepResponse.responseBody) {
+            message = this.parseMessage(stepResponse.responseBody);
+          }
+
           // Update step status - map backend response to UI format
           const stepExecution: StepExecution = {
             stepId: stepId,
@@ -231,7 +241,7 @@ export class AppComponent implements OnInit {
             requiresApproval: false,
             result: stepResponse.success ? {
               success: true,
-              message: stepResponse.responseBody || 'Step completed',
+              message: message,
               data: { statusCode: stepResponse.statusCode },
               statusCode: stepResponse.statusCode
             } : undefined,
@@ -311,5 +321,97 @@ export class AppComponent implements OnInit {
 
   getObjectEntries(obj: Record<string, string | null>): Array<[string, string | null]> {
     return Object.entries(obj);
+  }
+
+  /**
+   * Checks if any previous step has failed
+   * @param stepIndex Current step index in the group
+   * @param stepGroup Current step group name
+   * @param response Classification response containing all steps
+   * @returns true if any previous step has failed
+   */
+  hasPreviousStepFailed(
+    stepIndex: number,
+    stepGroup: string,
+    response: ClassificationResponse
+  ): boolean {
+    const groupOrder = ['prechecks', 'procedure', 'postchecks', 'rollback'];
+    const currentGroupIndex = groupOrder.indexOf(stepGroup);
+
+    // Check all steps in the same group before the current step
+    const currentGroup = response.steps?.[stepGroup as keyof StepGroups];
+    if (currentGroup) {
+      for (let i = 0; i < stepIndex; i++) {
+        const stepId = this.getStepId(response.taskId, stepGroup, i);
+        const stepExecution = this.getStepExecution(stepId);
+        if (stepExecution?.status === 'FAILED') {
+          return true;
+        }
+      }
+    }
+
+    // Check all steps in previous groups
+    for (let groupIdx = 0; groupIdx < currentGroupIndex; groupIdx++) {
+      const prevGroupName = groupOrder[groupIdx];
+      const prevGroup = response.steps?.[prevGroupName as keyof StepGroups];
+      if (prevGroup) {
+        for (let i = 0; i < prevGroup.length; i++) {
+          const stepId = this.getStepId(response.taskId, prevGroupName, i);
+          const stepExecution = this.getStepExecution(stepId);
+          if (stepExecution?.status === 'FAILED') {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Parses JSON messages and extracts readable strings
+   * @param message Message string that may contain JSON
+   * @returns Parsed message string
+   */
+  parseMessage(message: string | undefined): string {
+    if (!message) return 'Completed';
+
+    try {
+      const parsed = JSON.parse(message);
+      // If it's an object with a message property, return that
+      if (typeof parsed === 'object' && parsed !== null && 'message' in parsed) {
+        return String(parsed.message);
+      }
+      // If it's already a string, return it
+      return String(parsed);
+    } catch {
+      // If it's not JSON, return as is
+      return message;
+    }
+  }
+
+  /**
+   * Extracts role name from JWT token
+   * @param jwtToken JWT token string (with or without Bearer prefix)
+   * @returns Role name in Title Case (e.g., "Production Support")
+   */
+  extractRoleFromJWT(jwtToken: string): string {
+    const tokenParts = jwtToken.split(' ');
+    const token = tokenParts.length > 1 ? tokenParts[1] : jwtToken;
+
+    let roleName = 'Production Support'; // Default fallback
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.roles && Array.isArray(payload.roles) && payload.roles.length > 0) {
+        const role = payload.roles[0];
+        roleName = role.split('_').map(word =>
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+      }
+    } catch (e) {
+      console.warn('Failed to parse JWT token for role extraction', e);
+    }
+
+    return roleName;
   }
 }

@@ -47,7 +47,7 @@ export class ApiService {
   }
 
   executeStep(request: StepExecutionRequest): Observable<any> {
-    const headers = this.getHeaders();
+    const headers = this.getHeadersWithRole(request.roleName);
 
     return this.http.post<any>(
       `${this.baseUrl}/api/v1/execute-step`,
@@ -56,6 +56,19 @@ export class ApiService {
     ).pipe(
       catchError(this.handleError)
     );
+  }
+
+  private getHeadersWithRole(roleName?: string): HttpHeaders {
+    const headers: { [key: string]: string } = {
+      'Content-Type': 'application/json',
+      'Authorization': this.authToken
+    };
+
+    if (roleName) {
+      headers['Role-Name'] = roleName;
+    }
+
+    return new HttpHeaders(headers);
   }
 
   private handleError(error: HttpErrorResponse): Observable<never> {

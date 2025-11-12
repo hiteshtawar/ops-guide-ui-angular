@@ -763,6 +763,24 @@
   background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%);
 }
 
+.step-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #b2ebf2;
+}
+
+.step-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background: #b2ebf2;
+}
+
+.blocked-message {
+  font-size: 0.85rem;
+  color: #ff9800;
+  font-weight: 500;
+}
+
 .executing {
   color: #ffa726;
   font-weight: 500;
